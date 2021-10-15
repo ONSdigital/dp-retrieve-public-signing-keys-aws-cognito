@@ -1,0 +1,7 @@
+FROM onsdigital/dp-concourse-tools-ubuntu
+
+WORKDIR /app/
+
+COPY dp-retrieve-public-signing-keys-aws-cognito .
+
+CMD ./dp-retrieve-public-signing-keys-aws-cognito

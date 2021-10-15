@@ -1,0 +1,18 @@
+---
+
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: golang
+    tag: 1.17
+
+inputs:
+  - name: dp-retrieve-public-signing-keys-aws-cognito
+
+caches:
+  - path: go/
+
+run:
+  path: dp-retrieve-public-signing-keys-aws-cognito/ci/scripts/unit.sh
