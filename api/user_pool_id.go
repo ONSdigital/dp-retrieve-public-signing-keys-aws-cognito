@@ -13,7 +13,8 @@ import (
 	"log"
 	"math/big"
 	"net/http"
-	"strings"
+
+	"github.com/gorilla/mux"
 )
 
 type JsonKey struct {
@@ -39,7 +40,7 @@ type ErrResponse struct {
 
 func UserPoolIdHandler(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		userPoolId := strings.Trim(req.URL.Path, "/")
+		userPoolId := mux.Vars(req)["userPoolId"]
 		cognitoUrl := fmt.Sprintf("https://cognito-idp.eu-west-1.amazonaws.com/%s/.well-known/jwks.json", userPoolId)
 		resp, err := http.Get(cognitoUrl)
 		body, _ := ioutil.ReadAll(resp.Body)
