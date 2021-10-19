@@ -40,8 +40,9 @@ type ErrResponse struct {
 
 func UserPoolIdHandler(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+		region := mux.Vars(req)["region"]
 		userPoolId := mux.Vars(req)["userPoolId"]
-		cognitoUrl := fmt.Sprintf("https://cognito-idp.eu-west-1.amazonaws.com/%s/.well-known/jwks.json", userPoolId)
+		cognitoUrl := fmt.Sprintf("https://cognito-idp.%s.amazonaws.com/%s/.well-known/jwks.json", region, userPoolId)
 		resp, err := http.Get(cognitoUrl)
 		body, _ := ioutil.ReadAll(resp.Body)
 		if err != nil {
@@ -50,7 +51,7 @@ func UserPoolIdHandler(ctx context.Context) http.HandlerFunc {
 			var errResponse = ErrResponse{Error: cognitoErrResponse.Message}
 			jsonResponse, err := json.Marshal(errResponse)
 			if err != nil {
-				log.Fatalf("Failed to convert error response object into json.\nError:%s\n", err.Error())
+				log.Printf("Failed to convert error response object into json.\nError:%s\n", err.Error())
 			}
 			w.Write(jsonResponse)
 			return
@@ -69,20 +70,20 @@ func convertJwksToRsaJsonResponse(jwks JWKS) []byte {
 	}
 	jsonResponse, err := json.Marshal(response)
 	if err != nil {
-		log.Fatalf("Failed to convert Response object into json.\nError:%s\n", err.Error())
+		log.Printf("Failed to convert Response object into json.\nError:%s\n", err.Error())
 	}
 	return jsonResponse
 }
 
 func convertKidToRsa(jwk JsonKey) string {
 	if jwk.Kty != "RSA" {
-		log.Fatal("invalid key type:", jwk.Kty)
+		log.Println("invalid key type:", jwk.Kty)
 	}
 
 	// decode the base64 bytes for n
 	nb, err := base64.RawURLEncoding.DecodeString(jwk.N)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	e := 0
@@ -92,7 +93,7 @@ func convertKidToRsa(jwk JsonKey) string {
 		e = 65537
 	} else {
 		// need to decode "e" as a big-endian int
-		log.Fatal("need to decode e:", jwk.E)
+		log.Println("need to decode e:", jwk.E)
 	}
 
 	pk := &rsa.PublicKey{
@@ -102,7 +103,7 @@ func convertKidToRsa(jwk JsonKey) string {
 
 	der, err := x509.MarshalPKIXPublicKey(pk)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	block := &pem.Block{

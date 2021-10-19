@@ -17,6 +17,6 @@ func Setup(ctx context.Context, r *mux.Router) *API {
 		Router: r,
 	}
 
-	r.HandleFunc("/{userPoolId}", UserPoolIdHandler(ctx)).Methods("GET")
+	r.HandleFunc("/{region}/{userPoolId}", UserPoolIdHandler(ctx)).Methods("GET")
 	return api
 }
