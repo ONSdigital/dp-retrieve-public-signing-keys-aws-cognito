@@ -26,7 +26,7 @@ type JsonKey struct {
 	Use string `json:"use"`
 }
 
-type CognitoResponse struct {
+type JWKS struct {
 	Keys []JsonKey `json:"keys"`
 }
 
@@ -55,21 +55,26 @@ func UserPoolIdHandler(ctx context.Context) http.HandlerFunc {
 			w.Write(jsonResponse)
 			return
 		}
-		var cognitoResponse CognitoResponse
-		json.Unmarshal(body, &cognitoResponse)
-		var response = make(map[string]string)
-		for _, jwk := range cognitoResponse.Keys {
-			response[jwk.Kid] = kidRsaConverter(jwk)
-		}
-		jsonResponse, err := json.Marshal(response)
-		if err != nil {
-			log.Fatalf("Failed to convert Response object into json.\nError:%s\n", err.Error())
-		}
+		var jwks JWKS
+		json.Unmarshal(body, &jwks)
+		jsonResponse := convertJwksToRsaJsonResponse(jwks)
 		w.Write(jsonResponse)
 	}
 }
 
-func kidRsaConverter(jwk JsonKey) string {
+func convertJwksToRsaJsonResponse(jwks JWKS) []byte {
+	var response = make(map[string]string)
+	for _, jwk := range jwks.Keys {
+		response[jwk.Kid] = convertKidToRsa(jwk)
+	}
+	jsonResponse, err := json.Marshal(response)
+	if err != nil {
+		log.Fatalf("Failed to convert Response object into json.\nError:%s\n", err.Error())
+	}
+	return jsonResponse
+}
+
+func convertKidToRsa(jwk JsonKey) string {
 	if jwk.Kty != "RSA" {
 		log.Fatal("invalid key type:", jwk.Kty)
 	}
