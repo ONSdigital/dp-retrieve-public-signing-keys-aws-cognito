@@ -72,6 +72,7 @@ func convertJwksToRsaJsonResponse(jwks JWKS) []byte {
 	if err != nil {
 		log.Printf("Failed to convert Response object into json.\nError:%s\n", err.Error())
 	}
+	
 	return jsonResponse
 }
 
