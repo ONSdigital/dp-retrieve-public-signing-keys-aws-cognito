@@ -73,7 +73,7 @@ func convertJwksToRsaJsonResponse(jwks JWKS) ([]byte, error) {
 	var response = make(map[string]string)
 	var err error
 	for _, jwk := range jwks.Keys {
-		response[jwk.Kid], err = convertKidToRsa(jwk)
+		response[jwk.Kid], err = convertJwkToRsa(jwk)
 		if err != nil {
 			log.Println("Failed to retrieve RSA public key")
 			return nil, err
@@ -88,7 +88,7 @@ func convertJwksToRsaJsonResponse(jwks JWKS) ([]byte, error) {
 	return jsonResponse, nil
 }
 
-func convertKidToRsa(jwk JsonKey) (string, error) {
+func convertJwkToRsa(jwk JsonKey) (string, error) {
 	if jwk.Kty != "RSA" {
 		log.Println("unsupported key type:", jwk.Kty)
 		return "", errors.New("unsupported key type. Must be rsa key")

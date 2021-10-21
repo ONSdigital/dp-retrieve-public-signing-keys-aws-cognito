@@ -16,7 +16,7 @@ func TestSetup(t *testing.T) {
 		api := Setup(ctx, r)
 
 		Convey("The following routes should have been added", func() {
-			So(hasRoute(api.Router, "/{{userPoolId}}", "GET"), ShouldBeTrue)
+			So(hasRoute(api.Router, "/{region}/{{userPoolId}}", "GET"), ShouldBeTrue)
 		})
 	})
 }

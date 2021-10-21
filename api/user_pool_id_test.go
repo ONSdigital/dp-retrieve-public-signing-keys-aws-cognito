@@ -1,12 +1,12 @@
 package api
 
 import (
-	"encoding/json"
 	"testing"
+
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var testJWKS = JWKS{
+var validJWKS = JWKS{
 	Keys: []JsonKey{
 		{
 			Alg: "RS256",
@@ -27,19 +27,18 @@ var testJWKS = JWKS{
 	},
 }
 
-func TestConvertKidToRsa(t *testing.T) {
-	testJWKSSliceOfBytes, _ := json.Marshal(testJWKS)
-	response := convertJwksToRsaJsonResponse(testJWKS)
-	Convey("Given a valid JWKS we expect to receive a json response ", t, func() {
-		So(response, ShouldEqual, testJWKSSliceOfBytes)
+func TestConvertJwksToRsaJsonResponse(t *testing.T) {
+	response, err := convertJwksToRsaJsonResponse(validJWKS)
+	Convey("Enter a valid JWKS - check expected response", t, func() {
+		So(response, ShouldNotResemble, nil)
+		So(err, ShouldEqual, nil)
 	})
 }
 
-// func TestConvertKidToRsa(t *testing.T) {
-// 	t.Run("Given a valid JWKS we expect to receive a json response ", func(t *testing.T) {
-// 		response := convertJwksToRsaJsonResponse(testJWKS)
-// 		if reflect.TypeOf(response) != reflect.TypeOf([]uint8{}) {
-// 			t.Errorf("the function failed to return the RSA public keys in the expected format, got %v want %v", response, reflect.TypeOf([]uint8{}))
-// 		}
-// 	})
-// }
+func TestConvertJwkToRsa(t *testing.T) {
+	response, err := convertJwkToRsa(validJWKS.Keys[0])
+	Convey("Enter a valid JWK - check expected response", t, func() {
+		So(response, ShouldNotEqual, "")
+		So(err, ShouldEqual, nil)
+	})
+}
