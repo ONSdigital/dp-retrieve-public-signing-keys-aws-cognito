@@ -58,25 +58,36 @@ func UserPoolIdHandler(ctx context.Context) http.HandlerFunc {
 		}
 		var jwks JWKS
 		json.Unmarshal(body, &jwks)
-		jsonResponse := convertJwksToRsaJsonResponse(jwks)
+		jsonResponse, err := convertJwksToRsaJsonResponse(jwks)
+		if err !=nil{
+			errorMessage,_:=json.Marshal("Failed to retrieve RSA public key")
+			w.Write(errorMessage)
+			return
+		}
 		w.Write(jsonResponse)
 	}
 }
 
-func convertJwksToRsaJsonResponse(jwks JWKS) []byte {
+func convertJwksToRsaJsonResponse(jwks JWKS) ([]byte,error) {
 	var response = make(map[string]string)
+	var err error
 	for _, jwk := range jwks.Keys {
-		response[jwk.Kid] = convertKidToRsa(jwk)
+		response[jwk.Kid],err = convertKidToRsa(jwk)
+		if err!=nil{
+			log.Println("Failed to retrieve RSA public key")
+			return nil, err
+		}
 	}
 	jsonResponse, err := json.Marshal(response)
 	if err != nil {
 		log.Printf("Failed to convert Response object into json.\nError:%s\n", err.Error())
+		return nil, err
 	}
 	
-	return jsonResponse
+	return jsonResponse,nil
 }
 
-func convertKidToRsa(jwk JsonKey) string {
+func convertKidToRsa(jwk JsonKey) (string,error) {
 	if jwk.Kty != "RSA" {
 		log.Println("invalid key type:", jwk.Kty)
 	}
@@ -114,5 +125,5 @@ func convertKidToRsa(jwk JsonKey) string {
 
 	var out bytes.Buffer
 	pem.Encode(&out, block)
-	return out.String()
+	return out.String(), nil
 }
