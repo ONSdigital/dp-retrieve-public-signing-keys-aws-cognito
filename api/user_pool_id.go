@@ -120,7 +120,6 @@ func convertJwkToRsa(jwk JsonKey) (string, error) {
 	der, err := x509.MarshalPKIXPublicKey(pk)
 	if err != nil {
 		log.Println(err)
-		return "", errors.New("unsupported key type. Must be rsa key")
 	}
 
 	block := &pem.Block{

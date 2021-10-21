@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -43,17 +42,24 @@ func TestConvertJwkToRsa(t *testing.T) {
 		So(err, ShouldEqual, nil)
 	})
 	Convey("Enter an unsupported key type - check expected error is returned", t, func() {
-		validJWKS.Keys[0].Kty="ABC"
+		validJWKS.Keys[0].Kty = "ABC"
 		response, err := convertJwkToRsa(validJWKS.Keys[0])
 		So(response, ShouldEqual, "")
 		So(err.Error(), ShouldEqual, "unsupported key type. Must be rsa key")
 		validJWKS.Keys[0].Kty = "RSA"
 	})
 	Convey("Enter an invalid N value - check expected error is returned", t, func() {
-		validJWKS.Keys[0].N="!"
+		validJWKS.Keys[0].N = "!"
 		response, err := convertJwkToRsa(validJWKS.Keys[0])
 		So(response, ShouldEqual, "")
 		So(err.Error(), ShouldEqual, "error decoding JWK")
-		validJWKS.Keys[0].N="vBvi--N-F9MQO81xh71jIbkx81w4_sGhbztTJgIdhycV-lMzG6y3dMBWo9eRsFJuRs3MUFElmRrTVxc7EPWNQGQjUyPFW0_CnPPoGBCwgCyWtpNs5EHAkCHXsfryHb6LbJxH9LEbwOQCHR25_Bnqo_NeXSBJtvUabq3cTUgdOPc61Hskq-m19M1u7u1xu7b5DHD308Qyz3OhaEHx3cLL2za-mKxHe0VDe3sa5UfdaliTdBypFWJgNl6TsxF_G83fksgb3bVchzW45pu4dEhtNLqgXejH2-GwU8YRaAguKGW7dO_v-5uwLgDYQG9wgtAwLIMiXsFU7muig2pJEtlG2w"
+		validJWKS.Keys[0].N = "vBvi--N-F9MQO81xh71jIbkx81w4_sGhbztTJgIdhycV-lMzG6y3dMBWo9eRsFJuRs3MUFElmRrTVxc7EPWNQGQjUyPFW0_CnPPoGBCwgCyWtpNs5EHAkCHXsfryHb6LbJxH9LEbwOQCHR25_Bnqo_NeXSBJtvUabq3cTUgdOPc61Hskq-m19M1u7u1xu7b5DHD308Qyz3OhaEHx3cLL2za-mKxHe0VDe3sa5UfdaliTdBypFWJgNl6TsxF_G83fksgb3bVchzW45pu4dEhtNLqgXejH2-GwU8YRaAguKGW7dO_v-5uwLgDYQG9wgtAwLIMiXsFU7muig2pJEtlG2w"
+	})
+	Convey("Enter an unsupported exponent value - check expected error is returned", t, func() {
+		validJWKS.Keys[0].E = "ABC"
+		response, err := convertJwkToRsa(validJWKS.Keys[0])
+		So(response, ShouldEqual, "")
+		So(err.Error(), ShouldEqual, "unexpected exponent: unable to decode JWK")
+		validJWKS.Keys[0].E = "AQAB"
 	})
 }
