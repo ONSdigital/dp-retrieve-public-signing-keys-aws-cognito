@@ -4,7 +4,7 @@ Service to retrieve RSA public signing keys for an AWS Cognito user pool
 ### Getting started
 
 * Run `make debug`
-* Visit localhost:25999/{cognito-user-pool-id}
+* Visit localhost:25999/{aws-region}/{cognito-user-pool-id}
 * If the user pool ID is valid, you should receive a JSON response with both public RSA keys associated with that user pool
 
 ### Dependencies

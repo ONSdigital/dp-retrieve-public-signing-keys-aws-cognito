@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -59,8 +60,8 @@ func UserPoolIdHandler(ctx context.Context) http.HandlerFunc {
 		var jwks JWKS
 		json.Unmarshal(body, &jwks)
 		jsonResponse, err := convertJwksToRsaJsonResponse(jwks)
-		if err !=nil{
-			errorMessage,_:=json.Marshal("Failed to retrieve RSA public key")
+		if err != nil {
+			errorMessage, _ := json.Marshal("Failed to retrieve RSA public key")
 			w.Write(errorMessage)
 			return
 		}
@@ -68,12 +69,12 @@ func UserPoolIdHandler(ctx context.Context) http.HandlerFunc {
 	}
 }
 
-func convertJwksToRsaJsonResponse(jwks JWKS) ([]byte,error) {
+func convertJwksToRsaJsonResponse(jwks JWKS) ([]byte, error) {
 	var response = make(map[string]string)
 	var err error
 	for _, jwk := range jwks.Keys {
-		response[jwk.Kid],err = convertKidToRsa(jwk)
-		if err!=nil{
+		response[jwk.Kid], err = convertKidToRsa(jwk)
+		if err != nil {
 			log.Println("Failed to retrieve RSA public key")
 			return nil, err
 		}
@@ -83,19 +84,21 @@ func convertJwksToRsaJsonResponse(jwks JWKS) ([]byte,error) {
 		log.Printf("Failed to convert Response object into json.\nError:%s\n", err.Error())
 		return nil, err
 	}
-	
-	return jsonResponse,nil
+
+	return jsonResponse, nil
 }
 
-func convertKidToRsa(jwk JsonKey) (string,error) {
+func convertKidToRsa(jwk JsonKey) (string, error) {
 	if jwk.Kty != "RSA" {
-		log.Println("invalid key type:", jwk.Kty)
+		log.Println("unsupported key type:", jwk.Kty)
+		return "", errors.New("unsupported key type. Must be rsa key")
 	}
 
 	// decode the base64 bytes for n
 	nb, err := base64.RawURLEncoding.DecodeString(jwk.N)
 	if err != nil {
 		log.Println(err)
+		return "", errors.New("error decoding JWK")
 	}
 
 	e := 0
@@ -106,6 +109,7 @@ func convertKidToRsa(jwk JsonKey) (string,error) {
 	} else {
 		// need to decode "e" as a big-endian int
 		log.Println("need to decode e:", jwk.E)
+		return "", errors.New("unexpected exponent: unable to decode JWK")
 	}
 
 	pk := &rsa.PublicKey{
@@ -116,6 +120,7 @@ func convertKidToRsa(jwk JsonKey) (string,error) {
 	der, err := x509.MarshalPKIXPublicKey(pk)
 	if err != nil {
 		log.Println(err)
+		return "", errors.New("unsupported key type. Must be rsa key")
 	}
 
 	block := &pem.Block{
@@ -124,6 +129,10 @@ func convertKidToRsa(jwk JsonKey) (string,error) {
 	}
 
 	var out bytes.Buffer
-	pem.Encode(&out, block)
+	err = pem.Encode(&out, block)
+	if err != nil {
+		log.Println("error writing RSA public key to out")
+		return "", errors.New("error writing RSA public key to out")
+	}
 	return out.String(), nil
 }
