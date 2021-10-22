@@ -64,6 +64,10 @@ func UserPoolIdHandler(ctx context.Context) http.HandlerFunc {
 }
 
 func convertJwksToRsaJsonResponse(jwks JWKS) ([]byte, error) {
+	if len(jwks.Keys) == 0 {
+		log.Println("Empty JWKS")
+		return nil, errors.New("empty JWKS")
+	}
 	var response = make(map[string]string)
 	var err error
 	for _, jwk := range jwks.Keys {
@@ -80,6 +84,7 @@ func convertJwksToRsaJsonResponse(jwks JWKS) ([]byte, error) {
 	}
 
 	return jsonResponse, nil
+
 }
 
 func convertJwkToRsa(jwk JsonKey) (string, error) {

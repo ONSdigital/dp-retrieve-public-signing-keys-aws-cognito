@@ -3,6 +3,7 @@ package api
 import (
 	"testing"
 
+	// "github.com/gogo/protobuf/test/empty-issue70"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -28,10 +29,16 @@ var validJWKS = JWKS{
 }
 
 func TestConvertJwksToRsaJsonResponse(t *testing.T) {
-	response, err := convertJwksToRsaJsonResponse(validJWKS)
 	Convey("Enter a valid JWKS - check expected response", t, func() {
+		response, err := convertJwksToRsaJsonResponse(validJWKS)
 		So(response, ShouldNotResemble, nil)
 		So(err, ShouldEqual, nil)
+	})
+	Convey("Enter an empty JWKS - check expected error is returned", t, func() {
+		emptyJWKS:=JWKS{}
+		response, err := convertJwksToRsaJsonResponse(emptyJWKS)
+		So(response, ShouldEqual, nil)
+		So(err.Error(), ShouldEqual, "empty JWKS")
 	})
 }
 
