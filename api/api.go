@@ -16,7 +16,7 @@ func Setup(ctx context.Context, r *mux.Router) *API {
 	api := &API{
 		Router: r,
 	}
-
-	r.HandleFunc("/{region}/{userPoolId}", UserPoolIdHandler(ctx)).Methods("GET")
+	cjr := CognitoJWKSRetriever{}
+	r.HandleFunc("/{region}/{userPoolId}", UserPoolIdHandler(ctx,cjr)).Methods("GET")
 	return api
 }

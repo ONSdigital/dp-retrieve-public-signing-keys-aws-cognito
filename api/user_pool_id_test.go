@@ -68,3 +68,16 @@ func TestConvertJwkToRsa(t *testing.T) {
 		validJWKS.Keys[0].E = "AQAB"
 	})
 }
+
+type MockJWKSRetriever struct{}
+
+func (mjr MockJWKSRetriever) RetrieveJWKS(region, userPoolId string) (JWKS,error) {
+	return validJWKS,nil
+}
+
+func TestUserPoolIdHandler(t *testing.T){
+	Convey("dsgdgdfg",t,func(){
+		
+	})
+
+}

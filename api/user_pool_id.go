@@ -31,28 +31,39 @@ type JWKS struct {
 	Keys []JsonKey `json:"keys"`
 }
 
-func UserPoolIdHandler(ctx context.Context) http.HandlerFunc {
+type JWKSRetriever interface {
+	RetrieveJWKS(region, userPoolId string) (JWKS,error)
+}
+type CognitoJWKSRetriever struct{}
+
+func (cjr CognitoJWKSRetriever) RetrieveJWKS(region, userPoolId string) (JWKS,error) {
+	var jwks JWKS
+	cognitoUrl := fmt.Sprintf("https://cognito-idp.%s.amazonaws.com/%s/.well-known/jwks.json", region, userPoolId)
+	resp, err := http.Get(cognitoUrl)
+	if err != nil {
+		return jwks,errors.New("an error occurred whilst requesting JWKS from AWS Cognito")
+	}
+	if resp.StatusCode == 404 {
+		errMessage := fmt.Sprintf("User pool %s in region %s not found. Try changing the region or user pool ID.", userPoolId, region)
+		return jwks,errors.New(errMessage)
+	}
+	body, _ := ioutil.ReadAll(resp.Body)
+	json.Unmarshal(body, &jwks)
+	return jwks, nil
+	
+}
+
+func UserPoolIdHandler(ctx context.Context, jr JWKSRetriever) http.HandlerFunc {
+	
 	return func(w http.ResponseWriter, req *http.Request) {
 		region := mux.Vars(req)["region"]
 		userPoolId := mux.Vars(req)["userPoolId"]
-		cognitoUrl := fmt.Sprintf("https://cognito-idp.%s.amazonaws.com/%s/.well-known/jwks.json", region, userPoolId)
-		resp, err := http.Get(cognitoUrl)
+		jwks,err := jr.RetrieveJWKS(region, userPoolId)
 		if err != nil {
-			log.Println("Http request error: ", err)
-			errMessage, _ := json.Marshal("An error occurred whilst requesting JWKS from AWS Cognito.")
-			w.Write(errMessage)
-			return
+		log.Println(err.Error())
+		jsonResp, _ := json.Marshal(err.Error())
+		w.Write(jsonResp)
 		}
-		if resp.StatusCode == 404 {
-			errMessage := fmt.Sprintf("User pool %s in region %s not found. Try changing the region or user pool ID.", userPoolId, region)
-			log.Println(errMessage)
-			jsonResp, _ := json.Marshal(errMessage)
-			w.Write(jsonResp)
-			return
-		}
-		body, _ := ioutil.ReadAll(resp.Body)
-		var jwks JWKS
-		json.Unmarshal(body, &jwks)
 		jsonResponse, err := convertJwksToRsaJsonResponse(jwks)
 		if err != nil {
 			errMessage, _ := json.Marshal("Failed to retrieve RSA public key")
