@@ -31,38 +31,32 @@ type JWKS struct {
 	Keys []JsonKey `json:"keys"`
 }
 
-type CognitoErrResponse struct {
-	Message string `json:"message"`
-}
-
-type ErrResponse struct {
-	Error string
-}
-
 func UserPoolIdHandler(ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		region := mux.Vars(req)["region"]
 		userPoolId := mux.Vars(req)["userPoolId"]
 		cognitoUrl := fmt.Sprintf("https://cognito-idp.%s.amazonaws.com/%s/.well-known/jwks.json", region, userPoolId)
 		resp, err := http.Get(cognitoUrl)
-		body, _ := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			var cognitoErrResponse CognitoErrResponse
-			json.Unmarshal(body, &cognitoErrResponse)
-			var errResponse = ErrResponse{Error: cognitoErrResponse.Message}
-			jsonResponse, err := json.Marshal(errResponse)
-			if err != nil {
-				log.Printf("Failed to convert error response object into json.\nError:%s\n", err.Error())
-			}
-			w.Write(jsonResponse)
+			log.Println("Http request error: ", err)
+			errMessage, _ := json.Marshal("An error occurred whilst requesting JWKS from AWS Cognito.")
+			w.Write(errMessage)
 			return
 		}
+		if resp.StatusCode == 404 {
+			errMessage := fmt.Sprintf("User pool %s in region %s not found. Try changing the region or user pool ID.", userPoolId, region)
+			log.Println(errMessage)
+			jsonResp, _ := json.Marshal(errMessage)
+			w.Write(jsonResp)
+			return
+		}
+		body, _ := ioutil.ReadAll(resp.Body)
 		var jwks JWKS
 		json.Unmarshal(body, &jwks)
 		jsonResponse, err := convertJwksToRsaJsonResponse(jwks)
 		if err != nil {
-			errorMessage, _ := json.Marshal("Failed to retrieve RSA public key")
-			w.Write(errorMessage)
+			errMessage, _ := json.Marshal("Failed to retrieve RSA public key")
+			w.Write(errMessage)
 			return
 		}
 		w.Write(jsonResponse)
