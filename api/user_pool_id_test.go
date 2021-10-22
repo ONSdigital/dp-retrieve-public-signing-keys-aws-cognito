@@ -2,8 +2,6 @@ package api
 
 import (
 	"testing"
-
-	// "github.com/gogo/protobuf/test/empty-issue70"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -35,7 +33,7 @@ func TestConvertJwksToRsaJsonResponse(t *testing.T) {
 		So(err, ShouldEqual, nil)
 	})
 	Convey("Enter an empty JWKS - check expected error is returned", t, func() {
-		emptyJWKS:=JWKS{}
+		emptyJWKS := JWKS{}
 		response, err := convertJwksToRsaJsonResponse(emptyJWKS)
 		So(response, ShouldEqual, nil)
 		So(err.Error(), ShouldEqual, "empty JWKS")
