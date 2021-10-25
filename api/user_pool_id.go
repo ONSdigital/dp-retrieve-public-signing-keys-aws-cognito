@@ -1,13 +1,11 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/base64"
+	b64 "encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -71,7 +69,7 @@ func UserPoolIdHandler(ctx context.Context, jr JWKSRetriever) http.HandlerFunc {
 			return
 		}
 		body, err := ioutil.ReadAll(jsonJwks)
-		if err !=nil{
+		if err != nil {
 			log.Println(err.Error())
 			return
 		}
@@ -119,7 +117,7 @@ func convertJwkToRsa(jwk JsonKey) (string, error) {
 	}
 
 	// decode the base64 bytes for n
-	nb, err := base64.RawURLEncoding.DecodeString(jwk.N)
+	nb, err := b64.RawURLEncoding.DecodeString(jwk.N)
 	if err != nil {
 		log.Println(err)
 		return "", errors.New("error decoding JWK")
@@ -146,16 +144,9 @@ func convertJwkToRsa(jwk JsonKey) (string, error) {
 		log.Println(err)
 	}
 
-	block := &pem.Block{
-		Type:  "RSA PUBLIC KEY",
-		Bytes: der,
-	}
-
-	var out bytes.Buffer
-	err = pem.Encode(&out, block)
 	if err != nil {
 		log.Println("error writing RSA public key to out")
 		return "", errors.New("error writing RSA public key to out")
 	}
-	return out.String(), nil
+	return b64.StdEncoding.EncodeToString(der), nil
 }
