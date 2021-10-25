@@ -53,24 +53,37 @@ func UserPoolIdHandler(ctx context.Context, jr JWKSRetriever) http.HandlerFunc {
 		jsonJwks, statusCode, err := jr.RetrieveJWKS(region, userPoolId)
 		if err != nil {
 			log.Println(err.Error())
-			jsonResponse, _ := json.Marshal(err)
+			jsonResponse, err := json.Marshal(err)
+			if err != nil {
+				log.Printf("Failed to convert error message into json.\nError:%s\n", err.Error())
+			}
 			w.Write(jsonResponse)
 			return
 		}
 		if statusCode == 404 {
 			errMessage := fmt.Sprintf("User pool %s in region %s not found. Try changing the region or user pool ID.", userPoolId, region)
 			log.Println(errMessage)
-			jsonResponse, _ := json.Marshal(errMessage)
+			jsonResponse, err := json.Marshal(errMessage)
+			if err != nil {
+				log.Printf("Failed to convert error message into json.\nError:%s\n", err.Error())
+			}
 			w.Write(jsonResponse)
 			return
 		}
-		body, _ := ioutil.ReadAll(jsonJwks)
+		body, err := ioutil.ReadAll(jsonJwks)
+		if err !=nil{
+			log.Println(err.Error())
+			return
+		}
 		var jwks JWKS
 		json.Unmarshal(body, &jwks)
 		jsonResponse, err := convertJwksToRsaJsonResponse(jwks)
 		if err != nil {
-			errMessage, _ := json.Marshal("Failed to retrieve RSA public key")
-			w.Write(errMessage)
+			jsonResponse, err := json.Marshal("Failed to retrieve RSA public key")
+			if err != nil {
+				log.Printf("Failed to convert error message into json.\nError:%s\n", err.Error())
+			}
+			w.Write(jsonResponse)
 			return
 		}
 		w.Write(jsonResponse)
@@ -91,7 +104,11 @@ func convertJwksToRsaJsonResponse(jwks JWKS) ([]byte, error) {
 			return nil, err
 		}
 	}
-	jsonResponse, _ := json.Marshal(response)
+	jsonResponse, err := json.Marshal(response)
+	if err != nil {
+		log.Printf("Failed to convert Response object into json.\nError:%s\n", err.Error())
+		return nil, err
+	}
 	return jsonResponse, nil
 }
 
