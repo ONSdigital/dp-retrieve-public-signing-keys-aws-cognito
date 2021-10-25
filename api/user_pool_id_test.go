@@ -83,14 +83,21 @@ func (mjr MockJWKSRetriever) RetrieveJWKS(region, userPoolId string) (io.ReadClo
 	return readCloserResp, 200, nil
 }
 
+type JWKSRetrieverError struct{}
+
+func (jre JWKSRetrieverError) RetrieveJWKS(region, userPoolId string) (io.ReadCloser, int, error) {
+	resp := `{"message":"User pool eu-west-1_hfhty does not exist."}`
+	readCloserResp := io.NopCloser(strings.NewReader(resp))
+	return readCloserResp, 404, nil
+}
+
 var ctx = context.Background()
 
 func TestUserPoolIdHandler(t *testing.T) {
 	Convey("Given a user pool id handler", t, func() {
-		mjr := new(MockJWKSRetriever)
-		userPoolIdHandler := UserPoolIdHandler(ctx, mjr)
-
 		Convey("Given a valid JWKS is retrieved, check expected response", func() {
+			mjr := new(MockJWKSRetriever)
+		    userPoolIdHandler := UserPoolIdHandler(ctx, mjr)
 			req := httptest.NewRequest("GET", "http://localhost:25999/region/userPoolId", nil)
 			resp := httptest.NewRecorder()
 			expectedResponse := `{"j+diD4wBP/VZ4+X51XGRdI8Vi0CNV0OpEefKl1ge3A8=":"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvBvi++N+F9MQO81xh71jIbkx81w4/sGhbztTJgIdhycV+lMzG6y3dMBWo9eRsFJuRs3MUFElmRrTVxc7EPWNQGQjUyPFW0/CnPPoGBCwgCyWtpNs5EHAkCHXsfryHb6LbJxH9LEbwOQCHR25/Bnqo/NeXSBJtvUabq3cTUgdOPc61Hskq+m19M1u7u1xu7b5DHD308Qyz3OhaEHx3cLL2za+mKxHe0VDe3sa5UfdaliTdBypFWJgNl6TsxF/G83fksgb3bVchzW45pu4dEhtNLqgXejH2+GwU8YRaAguKGW7dO/v+5uwLgDYQG9wgtAwLIMiXsFU7muig2pJEtlG2wIDAQAB"}`
@@ -99,7 +106,19 @@ func TestUserPoolIdHandler(t *testing.T) {
 
 			So(resp.Code, ShouldEqual, http.StatusOK)
 			So(resp.Body.String(), ShouldResemble, expectedResponse)
+		})
 
+		Convey("Given an error message returned from cognito, check expected error message is returned to user", func() {
+			jre := new(JWKSRetrieverError)
+		    userPoolIdHandler := UserPoolIdHandler(ctx, jre)
+			req := httptest.NewRequest("GET", "http://localhost:25999/region/userPoolId", nil)
+			resp := httptest.NewRecorder()
+			expectedResponse := `"User pool  in region  not found. Try changing the region or user pool ID."`
+
+			userPoolIdHandler.ServeHTTP(resp, req)
+
+			So(resp.Code, ShouldEqual, http.StatusOK)
+			So(resp.Body.String(), ShouldResemble, expectedResponse)
 		})
 	})
 }
