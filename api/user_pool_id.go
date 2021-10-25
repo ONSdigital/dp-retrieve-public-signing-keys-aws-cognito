@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"math/big"
@@ -32,38 +33,40 @@ type JWKS struct {
 }
 
 type JWKSRetriever interface {
-	RetrieveJWKS(region, userPoolId string) (JWKS,error)
+	RetrieveJWKS(region, userPoolId string) (io.ReadCloser, int, error)
 }
 type CognitoJWKSRetriever struct{}
 
-func (cjr CognitoJWKSRetriever) RetrieveJWKS(region, userPoolId string) (JWKS,error) {
-	var jwks JWKS
+func (cjr CognitoJWKSRetriever) RetrieveJWKS(region, userPoolId string) (io.ReadCloser, int, error) {
 	cognitoUrl := fmt.Sprintf("https://cognito-idp.%s.amazonaws.com/%s/.well-known/jwks.json", region, userPoolId)
 	resp, err := http.Get(cognitoUrl)
 	if err != nil {
-		return jwks,errors.New("an error occurred whilst requesting JWKS from AWS Cognito")
+		return nil, resp.StatusCode, errors.New("an error occurred whilst requesting JWKS from AWS Cognito")
 	}
-	if resp.StatusCode == 404 {
-		errMessage := fmt.Sprintf("User pool %s in region %s not found. Try changing the region or user pool ID.", userPoolId, region)
-		return jwks,errors.New(errMessage)
-	}
-	body, _ := ioutil.ReadAll(resp.Body)
-	json.Unmarshal(body, &jwks)
-	return jwks, nil
-	
+	return resp.Body, resp.StatusCode, nil
 }
 
 func UserPoolIdHandler(ctx context.Context, jr JWKSRetriever) http.HandlerFunc {
-	
 	return func(w http.ResponseWriter, req *http.Request) {
 		region := mux.Vars(req)["region"]
 		userPoolId := mux.Vars(req)["userPoolId"]
-		jwks,err := jr.RetrieveJWKS(region, userPoolId)
+		jsonJwks, statusCode, err := jr.RetrieveJWKS(region, userPoolId)
 		if err != nil {
-		log.Println(err.Error())
-		jsonResp, _ := json.Marshal(err.Error())
-		w.Write(jsonResp)
+			log.Println(err.Error())
+			jsonResponse, _ := json.Marshal(err)
+			w.Write(jsonResponse)
+			return
 		}
+		if statusCode == 404 {
+			errMessage := fmt.Sprintf("User pool %s in region %s not found. Try changing the region or user pool ID.", userPoolId, region)
+			log.Println(errMessage)
+			jsonResponse, _ := json.Marshal(errMessage)
+			w.Write(jsonResponse)
+			return
+		}
+		body, _ := ioutil.ReadAll(jsonJwks)
+		var jwks JWKS
+		json.Unmarshal(body, &jwks)
 		jsonResponse, err := convertJwksToRsaJsonResponse(jwks)
 		if err != nil {
 			errMessage, _ := json.Marshal("Failed to retrieve RSA public key")
