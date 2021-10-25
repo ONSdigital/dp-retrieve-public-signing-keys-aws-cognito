@@ -86,10 +86,19 @@ func (mjr MockJWKSRetriever) RetrieveJWKS(region, userPoolId string) (io.ReadClo
 type JWKSRetrieverError struct{}
 
 func (jre JWKSRetrieverError) RetrieveJWKS(region, userPoolId string) (io.ReadCloser, int, error) {
-	resp := `{"message":"User pool eu-west-1_hfhty does not exist."}`
+	resp := `{"message":"User pool e-wst-4_hoikfhty does not exist."}`
 	readCloserResp := io.NopCloser(strings.NewReader(resp))
 	return readCloserResp, 404, nil
 }
+
+type JWKSRetrieverWrongKty struct{}
+
+func (jrwk JWKSRetrieverWrongKty) RetrieveJWKS(region, userPoolId string) (io.ReadCloser, int, error) {
+	resp := `{"keys": [{"alg":"RS256","e":"AQAB","kid":"j+diD4wBP/VZ4+X51XGRdI8Vi0CNV0OpEefKl1ge3A8=","kty":"ABCD","n":"vBvi--N-F9MQO81xh71jIbkx81w4_sGhbztTJgIdhycV-lMzG6y3dMBWo9eRsFJuRs3MUFElmRrTVxc7EPWNQGQjUyPFW0_CnPPoGBCwgCyWtpNs5EHAkCHXsfryHb6LbJxH9LEbwOQCHR25_Bnqo_NeXSBJtvUabq3cTUgdOPc61Hskq-m19M1u7u1xu7b5DHD308Qyz3OhaEHx3cLL2za-mKxHe0VDe3sa5UfdaliTdBypFWJgNl6TsxF_G83fksgb3bVchzW45pu4dEhtNLqgXejH2-GwU8YRaAguKGW7dO_v-5uwLgDYQG9wgtAwLIMiXsFU7muig2pJEtlG2w","use":"sig"}]}`
+	readCloserResp := io.NopCloser(strings.NewReader(resp))
+	return readCloserResp, 200, nil
+}
+
 
 var ctx = context.Background()
 
@@ -114,6 +123,19 @@ func TestUserPoolIdHandler(t *testing.T) {
 			req := httptest.NewRequest("GET", "http://localhost:25999/region/userPoolId", nil)
 			resp := httptest.NewRecorder()
 			expectedResponse := `"User pool  in region  not found. Try changing the region or user pool ID."`
+
+			userPoolIdHandler.ServeHTTP(resp, req)
+
+			So(resp.Code, ShouldEqual, http.StatusOK)
+			So(resp.Body.String(), ShouldResemble, expectedResponse)
+		})
+
+		Convey("Given a JWKS with an unsupported key type is retrieved, check expected error message is returned to user", func() {
+			jrwk := new(JWKSRetrieverWrongKty)
+		    userPoolIdHandler := UserPoolIdHandler(ctx, jrwk)
+			req := httptest.NewRequest("GET", "http://localhost:25999/region/userPoolId", nil)
+			resp := httptest.NewRecorder()
+			expectedResponse := `"Failed to retrieve RSA public key"`
 
 			userPoolIdHandler.ServeHTTP(resp, req)
 
