@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -99,6 +100,11 @@ func (jrwk JWKSRetrieverWrongKty) RetrieveJWKS(region, userPoolId string) (io.Re
 	return readCloserResp, 200, nil
 }
 
+type JWKSRetrieverHttpErr struct{}
+
+func (jrhe JWKSRetrieverHttpErr) RetrieveJWKS(region, userPoolId string) (io.ReadCloser, int, error) {
+	return nil, 400, errors.New("Http error occured whilst attempting to retrieve JWKS.")
+}
 
 var ctx = context.Background()
 
@@ -106,7 +112,7 @@ func TestUserPoolIdHandler(t *testing.T) {
 	Convey("Given a user pool id handler", t, func() {
 		Convey("Given a valid JWKS is retrieved, check expected response", func() {
 			mjr := new(MockJWKSRetriever)
-		    userPoolIdHandler := UserPoolIdHandler(ctx, mjr)
+			userPoolIdHandler := UserPoolIdHandler(ctx, mjr)
 			req := httptest.NewRequest("GET", "http://localhost:25999/region/userPoolId", nil)
 			resp := httptest.NewRecorder()
 			expectedResponse := `{"j+diD4wBP/VZ4+X51XGRdI8Vi0CNV0OpEefKl1ge3A8=":"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvBvi++N+F9MQO81xh71jIbkx81w4/sGhbztTJgIdhycV+lMzG6y3dMBWo9eRsFJuRs3MUFElmRrTVxc7EPWNQGQjUyPFW0/CnPPoGBCwgCyWtpNs5EHAkCHXsfryHb6LbJxH9LEbwOQCHR25/Bnqo/NeXSBJtvUabq3cTUgdOPc61Hskq+m19M1u7u1xu7b5DHD308Qyz3OhaEHx3cLL2za+mKxHe0VDe3sa5UfdaliTdBypFWJgNl6TsxF/G83fksgb3bVchzW45pu4dEhtNLqgXejH2+GwU8YRaAguKGW7dO/v+5uwLgDYQG9wgtAwLIMiXsFU7muig2pJEtlG2wIDAQAB"}`
@@ -117,9 +123,9 @@ func TestUserPoolIdHandler(t *testing.T) {
 			So(resp.Body.String(), ShouldResemble, expectedResponse)
 		})
 
-		Convey("Given an error message returned from cognito, check expected error message is returned to user", func() {
+		Convey("Given a 404 error message returned from Cognito, check expected error message is rendered", func() {
 			jre := new(JWKSRetrieverError)
-		    userPoolIdHandler := UserPoolIdHandler(ctx, jre)
+			userPoolIdHandler := UserPoolIdHandler(ctx, jre)
 			req := httptest.NewRequest("GET", "http://localhost:25999/region/userPoolId", nil)
 			resp := httptest.NewRecorder()
 			expectedResponse := `"User pool  in region  not found. Try changing the region or user pool ID."`
@@ -130,12 +136,25 @@ func TestUserPoolIdHandler(t *testing.T) {
 			So(resp.Body.String(), ShouldResemble, expectedResponse)
 		})
 
-		Convey("Given a JWKS with an unsupported key type is retrieved, check expected error message is returned to user", func() {
+		Convey("Given a JWKS with an unsupported key type is retrieved, check expected error message is rendered", func() {
 			jrwk := new(JWKSRetrieverWrongKty)
-		    userPoolIdHandler := UserPoolIdHandler(ctx, jrwk)
+			userPoolIdHandler := UserPoolIdHandler(ctx, jrwk)
 			req := httptest.NewRequest("GET", "http://localhost:25999/region/userPoolId", nil)
 			resp := httptest.NewRecorder()
 			expectedResponse := `"Failed to retrieve RSA public key"`
+
+			userPoolIdHandler.ServeHTTP(resp, req)
+
+			So(resp.Code, ShouldEqual, http.StatusOK)
+			So(resp.Body.String(), ShouldResemble, expectedResponse)
+		})
+
+		Convey("Given a http error is returned from Cognito, check expected error message is rendered", func() {
+			jrhe := new(JWKSRetrieverHttpErr)
+			userPoolIdHandler := UserPoolIdHandler(ctx, jrhe)
+			req := httptest.NewRequest("GET", "http://localhost:25999/region/userPoolId", nil)
+			resp := httptest.NewRecorder()
+			expectedResponse := `"Http error occured whilst attempting to retrieve JWKS."`
 
 			userPoolIdHandler.ServeHTTP(resp, req)
 

@@ -51,7 +51,7 @@ func UserPoolIdHandler(ctx context.Context, jr JWKSRetriever) http.HandlerFunc {
 		jsonJwks, statusCode, err := jr.RetrieveJWKS(region, userPoolId)
 		if err != nil {
 			log.Println(err.Error())
-			jsonResponse, err := json.Marshal(err)
+			jsonResponse, err := json.Marshal(err.Error())
 			if err != nil {
 				log.Printf("Failed to convert error message into json.\nError:%s\n", err.Error())
 			}
